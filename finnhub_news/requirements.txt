@@ -1,0 +1,8 @@
+requests>=2.25.1
+pandas>=1.2.0
+transformers
+torch
+# Use this on Apple Silicon (M1/M2/M3)
+# tensorflow-macos>=2.9.0
+# Use this on other platforms
+# tensorflow>=2.9.0
