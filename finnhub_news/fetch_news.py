@@ -7,7 +7,7 @@ import os
 # API parameters
 API_KEY = "cvqnit1r01qp88cmnod0cvqnit1r01qp88cmnodg"
 BASE_URL = "https://finnhub.io/api/v1/company-news"
-FROM_DATE = "2025-01-15"
+FROM_DATE = "2024-02-20"
 TO_DATE = "2025-02-20"
 TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "JPM", "GS", "BAC", "WFC", "TSLA", "BA", "CAT", "XOM", "CVX"]
 
