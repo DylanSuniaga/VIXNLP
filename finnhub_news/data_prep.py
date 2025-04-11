@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 from transformers import pipeline
 import yfinance as yf
-import pandas as pd
+import re
 from datetime import datetime
+from tqdm import tqdm
 
 pipe = pipeline("text-classification", model="ProsusAI/finbert")
 
@@ -65,18 +66,35 @@ def calculate_sentiment(df, col_name, pipe, suffix=''):
     # Create a copy of the DataFrame to avoid modifying the original
     result_df = df.copy()
     
-    # Convert column to list first, then praocess each with FinBERT
+    # Convert column to list first, then process each with FinBERT
     texts = result_df[col_name].fillna('').astype(str).tolist()
     
     # Create lists to store sentiment scores and labels
     sentiment_scores = []
     sentiment_labels = []
     
-    # Process each text individually
-    for text in texts:
-        prediction = pipe.predict(text)[0]
-        label = prediction['label']
-        score = prediction['score']
+    # Add progress bar
+    print(f"Analyzing sentiment for {len(texts)} entries in column '{col_name}'...")
+    
+    # Process each text individually with progress bar
+    for text in tqdm(texts, desc=f"Sentiment analysis for '{col_name}'"):
+        # Clean the text first - remove excessive newlines and whitespace
+        clean_text = re.sub(r'\s+', ' ', text).strip()
+        
+        # Truncate text to avoid exceeding model's token limit (512 tokens max)
+        # A simple approximation: truncate to 400 words which should be well below the limit
+        truncated_text = ' '.join(clean_text.split()[:400])
+        
+        try:
+            prediction = pipe.predict(truncated_text)[0]
+            label = prediction['label']
+            score = prediction['score']
+        except Exception as e:
+            print(f"Error processing text: {str(e)}")
+            print(f"Original length: {len(text)}, Clean length: {len(clean_text)}, Truncated length: {len(truncated_text)}")
+            # Fallback to neutral sentiment if error occurs
+            label = 'neutral'
+            score = 0.5
         
         # Store the label
         sentiment_labels.append(label)
