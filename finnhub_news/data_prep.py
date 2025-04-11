@@ -83,13 +83,19 @@ def calculate_mean_sentiment(df, start_date, end_date, summary_col, headline_col
         (df['date'] >= start_date) & 
         (df['date'] <= end_date)
     ]
+    
+    # In micro_analysis and macro_analysis, these specific suffixes are used
+    summary_sentiment_col = f'{summary_col}_sentiment_summary'
+    headline_sentiment_col = f'{headline_col}_sentiment_headline'
+    
     daily_sentiment_df = filtered_news_df.groupby(filtered_news_df['date'].dt.date).agg({
-        f'{summary_col}': 'mean',
-        f'{headline_col}': 'mean'
+        summary_sentiment_col: 'mean',
+        headline_sentiment_col: 'mean'
     }).reset_index()
+    
     daily_sentiment_df = daily_sentiment_df.rename(columns={
-        f'{summary_col}': 'avg_summary_sentiment',
-        f'{headline_col}': 'avg_headline_sentiment'
+        summary_sentiment_col: 'avg_summary_sentiment',
+        headline_sentiment_col: 'avg_headline_sentiment'
     })
 
     daily_sentiment_df['avg_overall_sentiment'] = (
@@ -102,8 +108,11 @@ def calculate_mean_sentiment(df, start_date, end_date, summary_col, headline_col
     return daily_sentiment_df
 
 def download_vix_data(start_date, end_date):
-    vix = yf.Ticker("^VIX")
-    vix_df = vix[["Open", "High", "Low", "Close", "Volume"]].copy()
+    # Use download method instead of Ticker
+    vix_data = yf.download("^VIX", start=start_date, end=end_date)
+    
+    # Extract needed columns
+    vix_df = vix_data[["Open", "High", "Low", "Close", "Volume"]].copy()
 
     # Convert index to a date column and reset index
     vix_df["date"] = vix_df.index.date
@@ -113,12 +122,17 @@ def download_vix_data(start_date, end_date):
     vix_df = vix_df[["date", "Open", "High", "Low", "Close", "Volume"]]
 
     vix_df = vix_df[['date', 'Close']]
+
     vix_df.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in vix_df.columns]
-    vix_df = vix_df[[ 'date_', 'Close_^VIX']].copy()
+
+    #print(vix_df.head())
+
+    vix_df = vix_df[['date_', 'Close_^VIX']].copy()
+
     vix_df.columns = [ 'date', 'vix_close']
 
     vix_df['date'] = pd.to_datetime(vix_df['date'])
-
+    print(vix_df.head())
     return vix_df
 
 def merge_dataframes(df1, df2):
@@ -140,6 +154,7 @@ def load_macro_df(path):
     macro_df = load_data(path)
     macro_df['date'] = pd.to_datetime(macro_df['published_at'])
     macro_df['date'] = macro_df['date'].dt.date
+    return macro_df
     
 
 def micro_analysis(path, summary_col, headline_col):
