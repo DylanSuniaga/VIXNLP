@@ -4,6 +4,14 @@ import os
 import time
 from datetime import datetime, timedelta
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Note: python-dotenv is not installed. Using environment variables directly.")
+    print("To install: pip install python-dotenv")
+
 def fetch_news_articles(api_key, topic, limit=10, countries=None, languages=None, date=None, offset=0):
     """
     Fetch news articles from the mediastack API.

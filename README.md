@@ -122,3 +122,23 @@ When working with this repository, you'll need to run the data collection script
    ```
    pip install -r requirements.txt
    ```
+
+3. Set up API keys:
+   - Create a `.env` file in the project root with the following:
+   ```
+   MEDIASTACK_API_KEY=your_mediastack_api_key
+   FINNHUB_API_KEY=your_finnhub_api_key
+   ```
+   - You'll need to register for free API keys at:
+     - [MediaStack](https://mediastack.com/)
+     - [Finnhub](https://finnhub.io/)
+   
+   - To load these environment variables, install python-dotenv:
+   ```
+   pip install python-dotenv
+   ```
+   - Then add this to the top of your Python scripts:
+   ```python
+   from dotenv import load_dotenv
+   load_dotenv()
+   ```

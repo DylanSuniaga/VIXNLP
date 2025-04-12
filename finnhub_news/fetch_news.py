@@ -4,6 +4,14 @@ from datetime import datetime
 import time
 import os
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Note: python-dotenv is not installed. Using environment variables directly.")
+    print("To install: pip install python-dotenv")
+
 # API parameters
 API_KEY = os.environ.get("FINNHUB_API_KEY")
 if not API_KEY:
