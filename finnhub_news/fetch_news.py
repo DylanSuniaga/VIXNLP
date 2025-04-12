@@ -5,7 +5,12 @@ import time
 import os
 
 # API parameters
-API_KEY = "cvqnit1r01qp88cmnod0cvqnit1r01qp88cmnodg"
+API_KEY = os.environ.get("FINNHUB_API_KEY")
+if not API_KEY:
+    print("Error: FINNHUB_API_KEY environment variable not set.")
+    print("Please set it with: export FINNHUB_API_KEY='your_api_key'")
+    exit(1)
+
 BASE_URL = "https://finnhub.io/api/v1/company-news"
 FROM_DATE = "2024-02-20"
 TO_DATE = "2025-02-20"
