@@ -1,6 +1,17 @@
 # VIXNLP: Volatility Index Prediction with Natural Language Processing
 
-This project explores the relationship between financial news sentiment and market volatility (VIX). It uses natural language processing to extract sentiment from news headlines and descriptions, then applies time series analysis and machine learning techniques to predict volatility regimes and VIX levels.
+## 🔍 About This Project
+
+This project demonstrates a VIX and regime forecast pipeline using sentiment signals extracted from real financial news.
+
+It includes:
+- Daily sentiment ingestion and feature engineering
+- Regime-labeled time series construction
+- Markov switching models and classifiers
+- Autoregressive simulation under regime assumptions
+- Final forward regime & volatility forecast
+
+All sensitive keys are excluded. Setup instructions available in `README_SETUP.md`.
 
 ## Project Overview
 
@@ -61,7 +72,7 @@ Where:
 
 This model predicts regime transitions with features:
 
-$$P(S_{t+1} = 1) = f(\text{sentiment\_features})$$
+$P(S_{t+1} = 1) = f(\text{sentiment features})$
 
 Features include:
 - Mean sentiment statistics
@@ -106,39 +117,4 @@ When working with this repository, you'll need to run the data collection script
 
 ### Setup
 
-1. Create and activate the virtual environment:
-   ```
-   # Create virtual environment
-   python -m venv venv
-   
-   # Activate on Windows
-   .\venv\Scripts\Activate.ps1
-   
-   # Activate on Mac/Linux
-   source venv/bin/activate
-   ```
-
-2. Install requirements:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Set up API keys:
-   - Create a `.env` file in the project root with the following:
-   ```
-   MEDIASTACK_API_KEY=your_mediastack_api_key
-   FINNHUB_API_KEY=your_finnhub_api_key
-   ```
-   - You'll need to register for free API keys at:
-     - [MediaStack](https://mediastack.com/)
-     - [Finnhub](https://finnhub.io/)
-   
-   - To load these environment variables, install python-dotenv:
-   ```
-   pip install python-dotenv
-   ```
-   - Then add this to the top of your Python scripts:
-   ```python
-   from dotenv import load_dotenv
-   load_dotenv()
-   ```
+See `README_SETUP.md` for complete setup instructions.
