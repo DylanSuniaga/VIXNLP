@@ -172,3 +172,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# CSV files to ignore
+/data/**/*.csv
+/finnhub_news/data/**/*.csv
+clean*.csv
+news.csv
+vix_news.csv
