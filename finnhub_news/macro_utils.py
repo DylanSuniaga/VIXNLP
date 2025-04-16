@@ -223,11 +223,18 @@ def clf_delayed_spike_prob(df, df1, target): #df should be vix_windows_df_train
     y = spike_label.loc[used_indices].astype(int)
     clf1.fit(vix_pct_change_lookback_df, y)
 
-    early_spike_probs = clf1.predict_proba(vix_pct_change_lookback_df)[:, 1]
-    df.loc[used_indices, "early_spike_prob"] = early_spike_probs
+    if len(vix_pct_change_lookback_df) > 1:
+        early_spike_probs = clf1.predict_proba(vix_pct_change_lookback_df)[:, 1]
+        df.loc[used_indices, "early_spike_prob"] = early_spike_probs
 
-    early_spike_probs = clf1.predict_proba(vix_pct_change_lookback_df)[:, 1]
-    df.loc[vix_pct_change_lookback_df.index, "early_spike_prob"] = early_spike_probs
+        early_spike_probs = clf1.predict_proba(vix_pct_change_lookback_df)[:, 1]
+        df.loc[vix_pct_change_lookback_df.index, "early_spike_prob"] = early_spike_probs
+    else:
+        early_spike_probs = clf1.predict_proba(vix_pct_change_lookback_df)
+        df.loc[vix_pct_change_lookback_df.index, "early_spike_prob"] = early_spike_probs
+        early_spike_probs = clf1.predict_proba(vix_pct_change_lookback_df)
+        df.loc[vix_pct_change_lookback_df.index, "early_spike_prob"] = early_spike_probs
+
 
     #y_true = spike_label.loc[df.index].astype(int)
     #y_pred = (early_spike_probs > 0.5).astype(int)
@@ -286,18 +293,36 @@ def linear_reg_models(vix_windows_df_train):
             sharp_rises_y.append(rising.reshape(-1, 1))
 
 # Combine datasets for long and sharp rises
-    long_rises_X_combined = np.vstack(long_rises_X)
-    long_rises_y_combined = np.vstack(long_rises_y)
-    sharp_rises_X_combined = np.vstack(sharp_rises_X)
-    sharp_rises_y_combined = np.vstack(sharp_rises_y)
 
-    model_long = LinearRegression()
-    model_long.fit(long_rises_X_combined, long_rises_y_combined)
-    y_pred_long = model_long.predict(long_rises_X_combined)
+    model_long = None
+    model_sharp = None
+    y_pred_long = None
+    y_pred_sharp = None
+    long_rises_X_combined = None
+    long_rises_y_combined = None
+    sharp_rises_X_combined = None
+    sharp_rises_y_combined = None
+    
+    if len(long_rises_X) > 1:
+        long_rises_X_combined = np.vstack(long_rises_X)
+        long_rises_y_combined = np.vstack(long_rises_y)
+        sharp_rises_X_combined = np.vstack(sharp_rises_X)
+        sharp_rises_y_combined = np.vstack(sharp_rises_y)
+    else:
+        long_rises_X_combined = long_rises_X
+        long_rises_y_combined = long_rises_y
+        sharp_rises_X_combined = sharp_rises_X
+        sharp_rises_y_combined = sharp_rises_y
+
+    if len(long_rises_X_combined) > 1:
+        model_long = LinearRegression()
+        model_long.fit(long_rises_X_combined, long_rises_y_combined)
+        y_pred_long = model_long.predict(long_rises_X_combined)
 
 # Fit linear regression for sharp rises
-    model_sharp = LinearRegression()
-    model_sharp.fit(sharp_rises_X_combined, sharp_rises_y_combined)
-    y_pred_sharp = model_sharp.predict(sharp_rises_X_combined)
+    if len(sharp_rises_X_combined) > 1:
+        model_sharp = LinearRegression()
+        model_sharp.fit(sharp_rises_X_combined, sharp_rises_y_combined)
+        y_pred_sharp = model_sharp.predict(sharp_rises_X_combined)
 
-    return model_long, model_sharp, y_pred_long, y_pred_sharp, sharp_rises_X, long_rises_X, sharp_rises_y, long_rises_y
+    return model_long, model_sharp, y_pred_long, y_pred_sharp, sharp_rises_X, long_rises_X, sharp_rises_y, long_rises_y, long_rises_X_combined, long_rises_y_combined, sharp_rises_X_combined, sharp_rises_y_combined
