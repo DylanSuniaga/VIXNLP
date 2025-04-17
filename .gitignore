@@ -188,3 +188,13 @@ vix_news.csv
 *.pkl.gz.tar
 *.pkl.bz2.tar
 *.pkl.zip.tar
+# Ignore all pickle files
+*.pkl
+*.pkl.gz
+*.pkl.bz2
+*.pkl.zip
+*.pkl.tar
+*.pkl.gz.tar
+*.pkl.bz2.tar
+*.pkl.zip.tar
+/finnhub_news/*.pkl
