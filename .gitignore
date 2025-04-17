@@ -179,6 +179,7 @@ cython_debug/
 clean*.csv
 news.csv
 vix_news.csv
+/finnhub_news/*.pkl
 *.pkl
 *.pkl.gz
 *.pkl.bz2
