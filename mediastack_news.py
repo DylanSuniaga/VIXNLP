@@ -225,8 +225,8 @@ def main():
         return
     
     # Date range to fetch news for (MM/DD/YYYY to YYYY-MM-DD)
-    start_date = "2020-04-10"
-    end_date = "2025-04-10"
+    start_date = "2025-04-09"
+    end_date = "2025-04-17"
     
     # List of topics that typically influence the VIX
     vix_topics = [
