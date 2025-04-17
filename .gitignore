@@ -179,3 +179,11 @@ cython_debug/
 clean*.csv
 news.csv
 vix_news.csv
+*.pkl
+*.pkl.gz
+*.pkl.bz2
+*.pkl.zip
+*.pkl.tar
+*.pkl.gz.tar
+*.pkl.bz2.tar
+*.pkl.zip.tar
