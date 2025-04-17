@@ -7,6 +7,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LinearRegression
 
+from sklearn.neural_network import MLPRegressor
+
+
 
 
 def calculate_stats(df):
@@ -59,7 +62,7 @@ def clf_panic_tomorrow(df, features, target):
 
     return clf, y_pred, df
 
-def identify_sustained_regimes_and_transitions(classification_df, min_duration=7):
+def identify_sustained_regimes_and_transitions(classification_df, min_duration=5):
     """
     Identifies sustained regime 1 blocks and transitions in the classification dataframe.
 
@@ -210,8 +213,8 @@ def clf_delayed_spike_prob(df, df1, target): #df should be vix_windows_df_train
     vix_late  = df.iloc[:, 30:]
     vix_start = df.iloc[:, 0]
 
-    early_spike = (vix_early.max(axis=1) > vix_start * 1.2)
-    late_spike  = (vix_late.max(axis=1) > vix_start * 1.2)
+    early_spike = (vix_early.max(axis=1) > vix_start * 1.1)
+    late_spike  = (vix_late.max(axis=1) > vix_start * 1.1)
 
 # Final label: 1 = spike happens early, 0 = spike only late, NaN = no spike
     spike_label = pd.Series(np.where(early_spike, 1, np.where(late_spike, 0, np.nan)), index=df.index)
@@ -266,25 +269,40 @@ def detect_spike_arc(vix_path, search_back=15, min_distance=8):
 
     return local_min_idx, peak_idx
 
-def linear_reg_models(vix_windows_df_train):
-    # Initialize containers for long and sharp rises
-    long_rises_X = []
-    long_rises_y = []
-    sharp_rises_X = []
-    sharp_rises_y = []
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
-# Split the paths
-    for dt, row in vix_windows_df_train.iterrows():
-        vix_path = row[[f"Day {i}" for i in range(1, 61)]].values
+def linear_reg_models(vix_windows_df_train, min_length=1):
+    """
+    Splits each 60‑day VIX path into its rising arc, buckets them into
+    'long' (>10 days) and 'sharp' (<=10 days) rises, then fits a
+    LinearRegression on each group if there’s >1 sample.
+
+    Returns:
+      model_long, model_sharp, 
+      y_pred_long, y_pred_sharp,
+      sharp_rises_X, long_rises_X,
+      sharp_rises_y, long_rises_y,
+      long_Xc, long_yc, sharp_Xc, sharp_yc
+    """
+
+    long_rises_X, long_rises_y = [], []
+    sharp_rises_X, sharp_rises_y = [], []
+
+    # 1) extract each row's numeric 60‑day array and slice its rising arc
+    for _, row in vix_windows_df_train.iterrows():
+        # pull columns "Day 1".."Day 60" as floats
+        vix_path = row.filter(like="Day ").to_numpy(dtype=float)
         start_idx, peak_idx = detect_spike_arc(vix_path)
 
-        if peak_idx <= start_idx + 2:
+        # slice the actual values
+        rising = vix_path[start_idx : peak_idx + 1]
+        if len(rising) < min_length:
             continue
 
-        rising = vix_path[start_idx:peak_idx + 1]
+        # build time index for regression
         t = np.arange(len(rising)).reshape(-1, 1)
 
-    # Split into sharp and long rises based on the path length
         if len(rising) > 10:
             long_rises_X.append(t)
             long_rises_y.append(rising.reshape(-1, 1))
@@ -292,37 +310,28 @@ def linear_reg_models(vix_windows_df_train):
             sharp_rises_X.append(t)
             sharp_rises_y.append(rising.reshape(-1, 1))
 
-# Combine datasets for long and sharp rises
+    # 2) helper to stack & fit if possible
+    def _stack_and_fit(X_list, y_list):
+        if not X_list:
+            return None, None, None, None
+        Xc = np.vstack(X_list)
+        yc = np.vstack(y_list)
+        if Xc.shape[0] > 1:
+            model = MLPRegressor(hidden_layer_sizes=(10000, 5000, 2500, 1000, 500, 250, 100, 5), activation='relu', max_iter=1000)
+            model.fit(Xc, yc.ravel())  # Flatten y
+            y_pred = model.predict(Xc)
+            return model, Xc, yc, y_pred
+        else:
+            return None, Xc, yc, None
 
-    model_long = None
-    model_sharp = None
-    y_pred_long = None
-    y_pred_sharp = None
-    long_rises_X_combined = None
-    long_rises_y_combined = None
-    sharp_rises_X_combined = None
-    sharp_rises_y_combined = None
-    
-    if len(long_rises_X) > 1:
-        long_rises_X_combined = np.vstack(long_rises_X)
-        long_rises_y_combined = np.vstack(long_rises_y)
-        sharp_rises_X_combined = np.vstack(sharp_rises_X)
-        sharp_rises_y_combined = np.vstack(sharp_rises_y)
-    else:
-        long_rises_X_combined = long_rises_X
-        long_rises_y_combined = long_rises_y
-        sharp_rises_X_combined = sharp_rises_X
-        sharp_rises_y_combined = sharp_rises_y
+    model_long,  long_Xc,  long_yc,  y_pred_long  = _stack_and_fit(long_rises_X,  long_rises_y)
+    model_sharp, sharp_Xc, sharp_yc, y_pred_sharp = _stack_and_fit(sharp_rises_X, sharp_rises_y)
 
-    if len(long_rises_X_combined) > 1:
-        model_long = LinearRegression()
-        model_long.fit(long_rises_X_combined, long_rises_y_combined)
-        y_pred_long = model_long.predict(long_rises_X_combined)
-
-# Fit linear regression for sharp rises
-    if len(sharp_rises_X_combined) > 1:
-        model_sharp = LinearRegression()
-        model_sharp.fit(sharp_rises_X_combined, sharp_rises_y_combined)
-        y_pred_sharp = model_sharp.predict(sharp_rises_X_combined)
-
-    return model_long, model_sharp, y_pred_long, y_pred_sharp, sharp_rises_X, long_rises_X, sharp_rises_y, long_rises_y, long_rises_X_combined, long_rises_y_combined, sharp_rises_X_combined, sharp_rises_y_combined
+    return (
+        model_long, model_sharp,
+        y_pred_long, y_pred_sharp,
+        sharp_rises_X, long_rises_X,
+        sharp_rises_y, long_rises_y,
+        long_Xc, long_yc,
+        sharp_Xc, sharp_yc
+    )
