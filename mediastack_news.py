@@ -225,22 +225,23 @@ def main():
         return
     
     # Date range to fetch news for (MM/DD/YYYY to YYYY-MM-DD)
-    start_date = "2025-04-09"
-    end_date = "2025-04-17"
+    start_date = "2018-02-12"
+    end_date = "2018-04-16"
     
     # List of topics that typically influence the VIX
     vix_topics = [
         "war",
         "recession", 
-        "taxes",
-        "monetary policy",
-        "geopolitical tensions",
+        "tax",                      # instead of "taxes"
+        "monetary",
+        "geopolitical",
         "inflation",
-        "global trade disputes",
-        "natural disasters",
-        "interest rates",
+        "trade",                    # instead of "global trade disputes"
+        "disaster",                 # instead of "natural disasters"
+        "interest rate",
         "federal reserve"
     ]
+
     
     # Number of articles to fetch per request (API maximum is 100)
     articles_per_request = 100

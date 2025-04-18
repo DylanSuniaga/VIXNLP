@@ -62,7 +62,7 @@ def clf_panic_tomorrow(df, features, target):
 
     return clf, y_pred, df
 
-def identify_sustained_regimes_and_transitions(classification_df, min_duration=5):
+def identify_sustained_regimes_and_transitions(classification_df, min_duration=5, trade = False):
     """
     Identifies sustained regime 1 blocks and transitions in the classification dataframe.
 
@@ -73,6 +73,9 @@ def identify_sustained_regimes_and_transitions(classification_df, min_duration=5
     Returns:
     pd.DataFrame: DataFrame with new columns indicating sustained regime 1 and transitions.
     """
+    if trade:
+        min_duration = 0
+
     # Step 1: Identify sustained regime 1 blocks (min_duration + consecutive days)
     classification_df['regime_group'] = (classification_df['regime_t'] != classification_df['regime_t'].shift()).cumsum()
 
@@ -95,7 +98,7 @@ def identify_sustained_regimes_and_transitions(classification_df, min_duration=5
 
     return classification_df
 
-def transform_vix_data(classification_df, window=60):
+def transform_vix_data(classification_df, window=60, trade = False):
     """
     Transforms the VIX data into three separate DataFrames for training:
     - VIX windows (future values)
@@ -109,53 +112,82 @@ def transform_vix_data(classification_df, window=60):
     Returns:
     dict: A dictionary containing the transformed DataFrames.
     """
-    vix_windows_train = []
-    regime_windows_train = []
-    vix_windows_past_train = []  # For lookback VIX
-    transition_datetimes = [] 
-    classification_df['vix_target_t+1'] = classification_df['vix_target'].shift(-1)
+    if not trade:
+        vix_windows_train = []
+        regime_windows_train = []
+        vix_windows_past_train = []  # For lookback VIX
+        transition_datetimes = [] 
+        classification_df['vix_target_t+1'] = classification_df['vix_target'].shift(-1)
 
-    # Iterate through the classification_df to extract the relevant windows
-    for idx in classification_df[classification_df['is_transition']].index:
-        loc = classification_df.index.get_loc(idx)
+        # Iterate through the classification_df to extract the relevant windows
+        for idx in classification_df[classification_df['is_transition']].index:
+            loc = classification_df.index.get_loc(idx)
         
         # Ensure both future and past slices are valid length
-        if loc - window < 0 or loc + window > len(classification_df):
-            continue
+            if loc - window < 0 or loc + window > len(classification_df):
+                continue
 
         # Look-ahead VIX + regime
-        vix_slice_future = classification_df.iloc[loc:loc + window]["vix_target_t+1"].values
-        regime_slice_future = classification_df.iloc[loc:loc + window]["regime_t_raw"].values
+            vix_slice_future = classification_df.iloc[loc:loc + window]["vix_target_t+1"].values
+            regime_slice_future = classification_df.iloc[loc:loc + window]["regime_t_raw"].values
 
         # Lookback VIX (before the transition point)
-        vix_slice_past = classification_df.iloc[loc - window:loc]["vix_target"].values
+            vix_slice_past = classification_df.iloc[loc - window:loc]["vix_target"].values
 
         # Only store if all are full length
-        if len(vix_slice_future) == window and len(vix_slice_past) == window:
-            vix_windows_train.append(vix_slice_future)
-            regime_windows_train.append(regime_slice_future)
-            vix_windows_past_train.append(vix_slice_past)
-            transition_datetimes.append(idx)
+            if len(vix_slice_future) == window and len(vix_slice_past) == window:
+                vix_windows_train.append(vix_slice_future)
+                regime_windows_train.append(regime_slice_future)
+                vix_windows_past_train.append(vix_slice_past)
+                transition_datetimes.append(idx)
 
     # Use datetime index for all 3 dataframes
-    dt_index = pd.to_datetime(transition_datetimes)
+        dt_index = pd.to_datetime(transition_datetimes)
 
     # Create DataFrames
-    vix_windows_df_train = pd.DataFrame(vix_windows_train, index=dt_index)
-    regime_windows_df_train = pd.DataFrame(regime_windows_train, index=dt_index)
-    vix_windows_past_df_train = pd.DataFrame(vix_windows_past_train, index=dt_index)
+        vix_windows_df_train = pd.DataFrame(vix_windows_train, index=dt_index)
+        regime_windows_df_train = pd.DataFrame(regime_windows_train, index=dt_index)
+        vix_windows_past_df_train = pd.DataFrame(vix_windows_past_train, index=dt_index)
 
     # Set index and column names
-    for df in [vix_windows_df_train, regime_windows_df_train, vix_windows_past_df_train]:
-        df.index.name = "transition_time"
-        df.columns = [f"Day {i}" for i in range(1, window + 1)]
+        for df in [vix_windows_df_train, regime_windows_df_train, vix_windows_past_df_train]:
+            df.index.name = "transition_time"
+            df.columns = [f"Day {i}" for i in range(1, window + 1)]
 
+    else:
+        vix_windows_past_train = []
+        transition_indices_used = []
+
+        for idx in classification_df[classification_df['is_transition']].index:
+            loc = classification_df.index.get_loc(idx)
+            if loc - window < 0:
+                continue
+            vix_slice_past = classification_df.iloc[loc - window:loc]["vix_target"].values
+            if len(vix_slice_past) == window:
+                vix_windows_past_train.append(vix_slice_past)
+                transition_indices_used.append(idx) 
+
+        dt_index = pd.to_datetime(transition_indices_used) 
+        vix_windows_past_df_train = pd.DataFrame(vix_windows_past_train, index=dt_index)
+
+        if not vix_windows_past_df_train.empty:
+            vix_windows_past_df_train.columns = [f"Day {i}" for i in range(1, window + 1)]
+
+        vix_windows_past_df_train.index.name = "transition_time"
+
+
+                
     # Return the three DataFrames
-    return {
-        "vix_windows_df_train": vix_windows_df_train,
-        "regime_windows_df_train": regime_windows_df_train,
-        "vix_windows_past_df_train": vix_windows_past_df_train
-    }
+    if trade:
+        return {
+            "vix_windows_past_df_train": vix_windows_past_df_train
+        }
+    else:
+        return {
+            "vix_windows_df_train": vix_windows_df_train,
+            "regime_windows_df_train": regime_windows_df_train,
+            "vix_windows_past_df_train": vix_windows_past_df_train
+        }
 
 
 import numpy as np
@@ -241,7 +273,8 @@ def clf_delayed_spike_prob(df, df1, target): #df should be vix_windows_df_train
 
     #y_true = spike_label.loc[df.index].astype(int)
     #y_pred = (early_spike_probs > 0.5).astype(int)
-    return df
+    return df, clf1, vix_pct_change_lookback_df
+
 
 def detect_spike_arc(vix_path, search_back=15, min_distance=8):
     vix_path = np.asarray(vix_path, dtype=np.float32)
