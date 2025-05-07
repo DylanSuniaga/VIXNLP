@@ -35,8 +35,6 @@ def calculate_stats(df, threshold_abs, window=30, window_prev=1):
     df['ewm_mean_flat'] = df['vix_flat_abs'].ewm(span=window).mean()
     df['ewm_std_flat']  = df['vix_flat_abs'].ewm(span=window).std()
     df['vix_ewm_zscore_flat'] = (df['vix_flat_abs'] - df['ewm_mean_flat']) / df['ewm_std_flat']
-
-    #df = df.dropna()
     return df
 
 def regime_t_markov_model(X, y, df, k, percentile):
@@ -134,7 +132,119 @@ def identify_sustained_regimes_and_transitions(classification_df, min_duration=1
     return classification_df
 
 
+def transform_vix_data(classification_df,k, window=60, trade=False, test=False):
+    """
+    Transforms the VIX data into windows around every regime switch from 0→1 or 0→2.
+    - trade=False: returns past & future windows around each switch
+    - trade=True: returns only past windows (for live trading)
+    - test=True: pads short windows with NaN instead of skipping
+    """
+    df = classification_df.copy()
+    df['vix_target_t+1'] = df['vix_target'].shift(-1)
 
+    # 1) detect every 0→1 or 0→2 switch in regime_t_raw
+    if k == 2:
+        df['prev_regime'] = df['regime_t_raw'].shift(1).fillna(0).astype(int)
+        transition_idxs = df.index[
+            (df['prev_regime'] == 0) &
+            (df['regime_t'] == 1)
+        ]
+    elif k == 3:
+        transition_idxs = df.index[
+            (df['prev_regime'] == 0) &
+            (df['regime_t_raw'].isin([1,2]))
+        ]
+
+    if not trade:
+        vix_windows_train      = []
+        regime_windows_train   = []
+        vix_windows_past_train = []
+        transition_times       = []
+
+        for idx in transition_idxs:
+            loc = df.index.get_loc(idx)
+
+            # — past window —
+            start_past = loc - window
+            if start_past < 0:
+                if test:
+                    past_vals = df.iloc[:loc]['vix_target'].values
+                    pad       = np.full(window - past_vals.size, np.nan)
+                    v_past    = np.concatenate([pad, past_vals])
+                else:
+                    continue
+            else:
+                v_past = df.iloc[start_past:loc]['vix_target'].values
+
+            # — future window —
+            end_fut = loc + window
+            if end_fut > len(df):
+                if test:
+                    fut_vals = df.iloc[loc:end_fut]['vix_target_t+1'].values
+                    pad      = np.full(window - fut_vals.size, np.nan)
+                    v_fut    = np.concatenate([fut_vals, pad])
+
+                    reg_vals = df.iloc[loc:end_fut]['regime_t_raw'].values
+                    pad_r    = np.full(window - reg_vals.size, np.nan)
+                    r_fut    = np.concatenate([reg_vals, pad_r])
+                else:
+                    continue
+            else:
+                v_fut = df.iloc[loc:end_fut]['vix_target_t+1'].values
+                r_fut = df.iloc[loc:end_fut]['regime_t_raw'].values
+
+            vix_windows_train.append(v_fut)
+            regime_windows_train.append(r_fut)
+            vix_windows_past_train.append(v_past)
+            transition_times.append(idx)
+
+        dt_index = pd.to_datetime(transition_times)
+        cols     = [f"Day {i}" for i in range(1, window+1)]
+
+        vix_windows_df_train      = pd.DataFrame(vix_windows_train,      index=dt_index, columns=cols)
+        regime_windows_df_train   = pd.DataFrame(regime_windows_train,   index=dt_index, columns=cols)
+        vix_windows_past_df_train = pd.DataFrame(vix_windows_past_train, index=dt_index, columns=cols)
+
+        for df_ in (vix_windows_df_train, regime_windows_df_train, vix_windows_past_df_train):
+            df_.index.name = "transition_time"
+
+        return {
+            "vix_windows_df_train":      vix_windows_df_train,
+            "regime_windows_df_train":   regime_windows_df_train,
+            "vix_windows_past_df_train": vix_windows_past_df_train
+        }
+
+    else:
+        # trade mode: only past windows
+        vix_windows_past_train = []
+        transition_times       = []
+
+        for idx in transition_idxs:
+            loc = df.index.get_loc(idx)
+            start_past = loc - window
+
+            if start_past < 0:
+                if test:
+                    past_vals = df.iloc[:loc]['vix_target'].values
+                    pad       = np.full(window - past_vals.size, np.nan)
+                    v_past    = np.concatenate([pad, past_vals])
+                else:
+                    continue
+            else:
+                v_past = df.iloc[start_past:loc]['vix_target'].values
+
+            vix_windows_past_train.append(v_past)
+            transition_times.append(idx)
+
+        dt_index = pd.to_datetime(transition_times)
+        cols     = [f"Day {i}" for i in range(1, window+1)]
+
+        vix_windows_past_df_train = pd.DataFrame(vix_windows_past_train,
+                                                 index=dt_index,
+                                                 columns=cols)
+        vix_windows_past_df_train.index.name = "transition_time"
+
+        return { "vix_windows_past_df_train": vix_windows_past_df_train }
 
 
 
