@@ -225,8 +225,8 @@ def main():
         return
     
     # Date range to fetch news for (MM/DD/YYYY to YYYY-MM-DD)
-    start_date = "2018-02-12"
-    end_date = "2018-04-16"
+    start_date = "2025-04-16"
+    end_date = "2025-05-06"
     
     # List of topics that typically influence the VIX
     vix_topics = [
@@ -239,7 +239,10 @@ def main():
         "trade",                    # instead of "global trade disputes"
         "disaster",                 # instead of "natural disasters"
         "interest rate",
-        "federal reserve"
+        "federal reserve",
+        "tariff",
+        "stock market",
+        "economy" 
     ]
 
     
