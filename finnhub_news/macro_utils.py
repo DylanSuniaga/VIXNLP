@@ -36,7 +36,6 @@ def calculate_stats(df, threshold_abs, window=30, window_prev=1):
     df['ewm_std_flat']  = df['vix_flat_abs'].ewm(span=window).std()
     df['vix_ewm_zscore_flat'] = (df['vix_flat_abs'] - df['ewm_mean_flat']) / df['ewm_std_flat']
 
-    df = df.dropna()
     return df
 
 def regime_t_markov_model(X, y, df, k, percentile):

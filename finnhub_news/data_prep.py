@@ -5,7 +5,10 @@ import yfinance as yf
 import re
 from datetime import datetime
 from tqdm import tqdm
+import time  # Add import for time module
+from dotenv import load_dotenv
 
+load_dotenv()
 pipe = pipeline("text-classification", model="ProsusAI/finbert")
 
 def load_data(path):
@@ -201,77 +204,58 @@ def calculate_sentiment_stats(df, start_date, end_date, summary_col, headline_co
     print(f"Output columns: {result_dates.columns.tolist()}")
     return result_dates
 
-def download_vix_data(start_date, end_date):
-    # Use download method instead of Ticker
-    vix_data = yf.download("^VIX", start=start_date, end=end_date)
+import time
+import pandas as pd
+from polygon import RESTClient
+import os
+
+def download_vix_data(start_date, end_date, vix_api_key):
+    time.sleep(0.5)  # Respectful rate limiting
     
-    # Extract needed columns
-    vix_df = vix_data[["Open", "High", "Low", "Close", "Volume"]].copy()
+    client = RESTClient(vix_api_key)  # Replace with your actual API key
 
-    # Convert index to a date column and reset index
-    vix_df["date"] = vix_df.index.date
-    vix_df = vix_df.reset_index(drop=True)
+    aggs = []
+    for a in client.list_aggs(
+        "I:VIX",
+        1,
+        "day",
+        start_date,
+        pd.Timestamp.today().date(),
+        sort="asc",
+        limit=500
+    ):
+        aggs.append(a)
 
-    # Reorder columns to have date first
-    vix_df = vix_df[["date", "Open", "High", "Low", "Close", "Volume"]]
+    # Convert to DataFrame
+    vix_df = pd.DataFrame([{
+        'date': pd.to_datetime(agg.timestamp, unit='ms'),
+        'vix_close': agg.close,
+        'vix_high': agg.high
+    } for agg in aggs])
 
-    vix_df = vix_df[['date', 'Close']]
-
-    vix_df.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in vix_df.columns]
-
-    #print(vix_df.head())
-
-    vix_df = vix_df[['date_', 'Close_^VIX']].copy()
-
-    vix_df.columns = [ 'date', 'vix_close']
-
-    vix_df['date'] = pd.to_datetime(vix_df['date'])
     return vix_df
 
+
 def merge_dataframes(df1, df2):
-    """
-    Merge sentiment data (df1) with VIX data (df2), ensuring each sentiment point
-    is matched with the next available VIX trading day.
-    
-    Parameters:
-    -----------
-    df1 : pandas.DataFrame
-        Daily sentiment data with date column
-    df2 : pandas.DataFrame
-        VIX data with date column
-    
-    Returns:
-    --------
-    pandas.DataFrame
-        Merged dataframe with sentiment matched to corresponding VIX data
-    """
-    # Ensure dates are datetime and sorted
-    df1['date'] = pd.to_datetime(df1['date'])
-    df2['date'] = pd.to_datetime(df2['date'])
-    
+    df1['date'] = pd.to_datetime(df1['date']).dt.normalize()
+    df2['date'] = pd.to_datetime(df2['date']).dt.normalize()
+
     df1 = df1.sort_values('date')
     df2 = df2.sort_values('date')
-    
-    # Use merge_asof with direction='forward' to match each sentiment row to the next VIX trading day
-    # tolerance parameter can be adjusted to control how far to look for a match
+
     merged_df = pd.merge_asof(
         df1,
         df2,
         on='date',
         direction='forward',
-        tolerance=pd.Timedelta('3D')  # Look up to 3 days ahead for a match
+        tolerance=pd.Timedelta('3D')
     )
-    
-    # Rename the VIX column
+
     merged_df = merged_df.rename(columns={'vix_close': 'vix_target'})
-    
-    # Keep only rows where we have both sentiment and VIX data
     merged_df = merged_df.dropna(subset=['vix_target'])
-    
-    # Optional: Add a column showing the lag between sentiment date and VIX date
-    # This can help in analysis to see how far apart the dates are
-    
+
     return merged_df
+
 
 def micro_analysis(path, summary_col, headline_col):
     df = load_data(path)
@@ -283,7 +267,7 @@ def micro_analysis(path, summary_col, headline_col):
     df = merge_dataframes(df, vix_df)
     return df
 
-def macro_analysis(path, summary_col, headline_col):
+def macro_analysis(path, summary_col, headline_col, vix_api_key):
     print("Step 1: Loading data")
     df = load_macro_df(path)
     print(f"Columns after loading: {df.columns.tolist()}")
@@ -314,7 +298,7 @@ def macro_analysis(path, summary_col, headline_col):
     print(f"Columns after sentiment stats: {df.columns.tolist()}")
     
     print("Step 6: Downloading VIX data")
-    vix_df = download_vix_data(min_date, max_date)
+    vix_df = download_vix_data(min_date, max_date, vix_api_key)
     print(f"VIX data shape: {vix_df.shape}")
     print(f"VIX columns: {vix_df.columns.tolist()}")
     

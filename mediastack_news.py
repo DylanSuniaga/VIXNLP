@@ -225,8 +225,8 @@ def main():
         return
     
     # Date range to fetch news for (MM/DD/YYYY to YYYY-MM-DD)
-    start_date = "2025-04-16"
-    end_date = "2025-05-06"
+    start_date = "2025-05-23"
+    end_date = "2025-05-26"
     
     # List of topics that typically influence the VIX
     vix_topics = [
@@ -242,7 +242,13 @@ def main():
         "federal reserve",
         "tariff",
         "stock market",
-        "economy" 
+        "economy",
+        "crash",
+        "debt",
+        'layoffs',
+        "fear",
+        "trump",
+        "bill"
     ]
 
     
@@ -250,7 +256,7 @@ def main():
     articles_per_request = 100
     
     # Maximum articles to fetch per topic and date range
-    max_articles_per_topic = 1000
+    max_articles_per_topic = 2000
     
     # Optional filters
     countries = "us"
