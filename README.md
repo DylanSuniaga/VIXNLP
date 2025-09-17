@@ -1,128 +1,111 @@
 # VIXNLP: Volatility Index Prediction with Natural Language Processing
 
+## 📌 Status
+
+This was my first major exploration project in quantitative finance and natural language processing. The work has been discontinued, and I have since moved on to more advanced projects that are no longer developed publicly on GitHub. I’m leaving this repository as a record of my initial experimentation with VIX forecasting, sentiment features, and regime analysis.
+
+---
+
 ## 🔍 About This Project
 
-This project demonstrates a VIX and regime forecast pipeline using sentiment signals extracted from real financial news. It includes a complete pipeline from data collection to volatility prediction, with special focus on regime detection and spike prediction.
+The goal of this project was to investigate whether macroeconomic news sentiment could help forecast short-term movements and spikes in the CBOE Volatility Index (VIX).
 
-It includes:
-- Daily sentiment ingestion and feature engineering
-- Regime-labeled time series construction
-- Markov switching models and classifiers
-- Spike detection and duration analysis
-- Peak level prediction using neural networks
-- Half-life analysis for volatility levels
-- Final forward regime & volatility forecast
+The project combined **NLP-driven sentiment analysis** with **time-series modeling and classifiers** to study volatility regimes, spike events, and persistence of volatility levels.
 
-All sensitive keys are excluded. Setup instructions available in `README_SETUP.md`.
+While the pipeline was fully functional, it remained exploratory and was not productionized.
 
-## Project Overview
+---
 
-The VIXNLP project consists of several integrated components:
+## 🛠️ Features
 
-1. **News Data Collection**: Methods for gathering financial news from multiple sources
-2. **Sentiment Analysis**: NLP models for extracting sentiment from news text
-3. **Feature Engineering**: Creating predictive features from news sentiment
-4. **Volatility Prediction**: Models for forecasting VIX movements based on news sentiment
-5. **Spike Analysis**: Detection and prediction of volatility spikes and their characteristics
+* **Daily sentiment ingestion & feature engineering**
+* **Regime-labeled time series construction**
+* **Markov switching models for regime detection**
+* **Classifiers for regime/spike prediction**
+* **Feedforward neural networks** for peak level prediction (no LSTMs used)
+* **Spike detection and half-life analysis**
 
-## Data Pipeline
+---
 
-```
-News Sources → Data Collection → Raw News Data → Sentiment Analysis → Feature Engineering → Volatility Models → Spike Analysis
-```
+## 📊 Project Overview
 
-## Components
+1. **News Data Collection**
 
-### 1. News Collection
+   * *MediaStack API* for financial news headlines
+   * *Finnhub API* for company- and macro-specific news
+   * A 7-year historical macro news dataset for backtesting
 
-The project includes multiple methods to collect financial news:
+2. **Sentiment Analysis**
 
-- **MediaStack API**: Script for accessing MediaStack's news database
-- **Historical News Dataset**: 7-year macro news history dataset for backtesting
-- **Finnhub API Integration**: Programmatic access to company-specific news
+   * *FinBERT* for financial sentiment scoring
+   * Headline vs. summary sentiment comparison
+   * Custom calibration for financial domain context
 
-### 2. Sentiment Analysis
+3. **Feature Engineering**
 
-We apply NLP techniques to extract sentiment from news:
+   * Sentiment decay (rolling effects from prior news)
+   * Negative shock intensity measures
+   * Cross-features between sentiment and VIX levels
 
-- **FinBERT Model**: Financial domain-specific BERT model for sentiment scoring
-- **Headline vs. Summary Analysis**: Different sentiment extraction for headlines and content
-- **Sentiment Calibration**: Adjusting sentiment scores based on financial domain knowledge
+4. **Volatility Forecasting Models**
 
-### 3. Volatility Prediction Models
+   * Markov regime-switching models (Normal vs. Panic states)
+   * Logistic classifiers for regime transition prediction
+   * Feedforward neural networks for spike peak prediction
 
-The project implements multiple modeling approaches:
+5. **Spike Analysis**
 
-#### Markov Regime-Switching Model
+   * Detection of volatility spikes
+   * Duration and half-life estimation
+   * Neural network-based peak level estimation
 
-This model identifies different market states (normal and panic regimes) and predicts VIX levels:
+---
 
-$$
-\text{VIX}_{t+1} = 
-\begin{cases}
-\alpha_0 + \beta_0^1 X_1 + \beta_0^2 X_2 + \epsilon_t, & \text{if } S_t = 0 \text{ (Normal regime)} \\
-\alpha_1 + \beta_1^1 X_1 + \beta_1^2 X_2 + \epsilon_t, & \text{if } S_t = 1 \text{ (Panic regime)}
-\end{cases}
-$$
+## 📈 Results
 
-Where:
-- $X_1$ represents mean sentiment decay (previous day's sentiment)
-- $X_2$ represents negative shock intensity
-- $\epsilon_t$ is the error term
-- $S_t$ is the market regime state
+Key exploratory findings:
 
-#### Spike Analysis
+* Two distinct volatility regimes with differing baselines
+* Negative news shocks had a strong influence on regime transitions
+* Prior-day sentiment carried predictive power for next-day VIX changes
+* Classifiers reached up to **\~94% accuracy** in distinguishing regimes
+* Neural networks showed early promise in predicting spike peak levels, but were not used due to low data available and high probability of overfit
 
-The project includes comprehensive spike analysis:
-- Spike detection algorithms
-- Duration prediction
-- Peak level prediction using neural networks
-- Half-life analysis for volatility levels
+---
 
-## Results
+## 📂 Project Structure
 
-Our analysis has identified:
+* **/data/** → Processed datasets (excluded from repo due to size)
+* **/finnhub\_news/** → Finnhub API integration
+* **/utils/** → Helper functions
+* **downloader.ipynb** → End-to-end pipeline notebook
+* **mediastack\_news.py** → MediaStack API script
+* **clean\_csv.py** → Data cleaning utilities
 
-1. Two distinct market volatility regimes with different baseline VIX levels
-2. Strong influence of negative news shocks on regime transitions
-3. Predictive power of previous day's sentiment on next-day volatility
-4. Classification accuracy of 94% for regime prediction
-5. Effective spike detection and duration prediction
-6. Neural network-based peak level prediction capabilities
-7. Half-life analysis for volatility level persistence
+---
 
-## Project Structure
+## ⚙️ Usage Notes
 
-- **/data/**: Collected and processed datasets
-- **/finnhub_news/**: Finnhub API integration
-- **/utils/**: Utility functions and helpers
-- **downloader.ipynb**: Main pipeline notebook containing the complete workflow
-- **mediastack_news.py**: Script for accessing MediaStack's news API
-- **clean_csv.py**: Utility for cleaning and processing CSV data files
+### Data
 
-## Usage Notes
-
-### Data Size Management
-
-Due to GitHub file size limits, large data files are ignored in this repository. The `.gitignore` file excludes:
-- All CSV files in the `/data/` directory
-- All CSV files in `/finnhub_news/data/`
-- Files that start with "clean"
-- Specific files like "news.csv" and "vix_news.csv"
-- All pickle files
-
-When working with this repository, you'll need to run the data collection scripts to generate these files locally.
+Large datasets (CSV, pickle) are excluded via `.gitignore`. You’ll need to regenerate them locally using the provided API scripts.
 
 ### Setup
 
-See `README_SETUP.md` for complete setup instructions.
+Instructions for environment and dependencies are in `README_SETUP.md`.
 
 ### Running the Pipeline
 
-The complete pipeline is available in `downloader.ipynb`, which includes:
-1. Data collection and preprocessing
-2. Sentiment analysis
-3. Feature engineering
-4. Regime detection
-5. Spike analysis
-6. Prediction models
+Main workflow is available in `downloader.ipynb`:
+
+1. Collect news data
+2. Run sentiment analysis
+3. Generate features
+4. Train classifiers / neural networks
+5. Run regime detection and spike analysis
+
+---
+
+## 🚀 Reflection
+
+This project marked my entry into combining **NLP + financial time series modeling**. While I no longer actively maintain it, the lessons here shaped my later work in volatility forecasting, regime modeling, and model deployment. 
